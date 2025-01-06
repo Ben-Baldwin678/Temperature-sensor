@@ -1,0 +1,81 @@
+#python code for the raspberry pi that reads the DHT11 sensor uploads it to thingspeak and to the arduino via wifi 
+
+import time
+import requests
+from seeed_dht import DHT
+from grove.display.jhd1802 import JHD1802
+
+# Arduino and ThingSpeak configuration
+ARDUINO_IP = "192.168.4.63"  # Arduino ip address
+ARDUINO_PORT = 80            # port used by the arduino
+THINGSPEAK_WRITE_API_KEY = 'M1ZYZBAS0Y9H8094' # write key for the thingspeak channel
+THINGSPEAK_URL = 'https://api.thingspeak.com/update?api_key=M1ZYZBAS0Y9H8094' # thingspeak url
+
+def send_to_arduino(temp):
+    """
+    Send temperature data to Arduino via Wi-Fi.
+    """
+    try:
+        url = f"http://192.168.4.63:80"   # Using the correct IP address and port
+        payload = f"TEMP:{temp}\n"
+        print(f"Sending to Arduino: {payload}")
+        response = requests.post(url, data=payload)
+
+        if response.status_code == 200:
+            print("Data sent to Arduino successfully.")
+        else:
+            print(f"Failed to send data to Arduino. HTTP {response.status_code}")
+    except Exception as e:
+        print(f"Error sending to Arduino: {e}")
+
+def upload_to_thingspeak(temp, humi):
+    """
+    Upload temperature and humidity to ThingSpeak.
+    """
+    payload = {
+        'api_key': THINGSPEAK_WRITE_API_KEY,
+        'field1': temp,
+        'field2': humi
+    }
+    try:
+
+        response = requests.post(THINGSPEAK_URL, data=payload)
+
+        if response.status_code == 200:
+            print("Data uploaded to ThingSpeak successfully.")
+        else:
+            print(f"Failed to upload to ThingSpeak. HTTP {response.status_code}")
+    except Exception as e:
+        print(f"Error uploading to ThingSpeak: {e}")
+
+def main():
+    # Initialize LCD and sensor
+    lcd = JHD1802()
+    sensor = DHT('11', 5)
+
+    while True:
+        # Read temperature and humidity from sensor
+        humi, temp = sensor.read()
+        if temp is not None and humi is not None:
+            print(f"Temperature: {temp}C, Humidity: {humi}%") #prints in serial monitor "tempC, Humidity: %"
+
+            # Update LCD display
+            lcd.setCursor(0, 0)
+            lcd.write(f"Temp: {temp}C")
+
+            lcd.setCursor(1, 0)
+            lcd.write(f"Humidity: {humi}%")
+
+            # Send data to Arduino
+            send_to_arduino(temp)
+
+            # Upload data to ThingSpeak
+            upload_to_thingspeak(temp, humi)
+        else:
+            print("Failed to read sensor data.")
+
+        # Wait before next update
+        time.sleep(15)
+
+if __name__ == "__main__":
+    main()
