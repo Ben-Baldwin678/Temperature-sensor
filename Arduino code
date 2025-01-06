@@ -8,8 +8,8 @@
 #define LED_GREEN 10
 #define LED_BLUE 11
 
-const char* ssid = "TALKTALK8F4470"; // Wi-Fi SSID
-const char* password = "A6JYJHDK";   // Wi-Fi Password
+const char* ssid = "Wi-Fi ssid"; // Wi-Fi SSID
+const char* password = "Wi-Fi password";   // Wi-Fi Password
 
 WiFiServer server(80);  // Create a server on port 80
 
