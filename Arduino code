@@ -1,101 +1,82 @@
 // code for arduino to connect to the wifi and read the data sent from the raspberry pi and change the RGB LED accordingly 
-
-
 #include <WiFiS3.h>
 
-// Pins for RGB LED
-#define LED_RED 9
-#define LED_GREEN 10
-#define LED_BLUE 11
+const char* ssid = "ssid"; // Wi-Fi SSID
+const char* password = "password";   // Wi-Fi Password
+#define led_red 9
+#define led_green 10
+#define led_blue 11
 
-const char* ssid = "Wi-Fi ssid"; // Wi-Fi SSID
-const char* password = "Wi-Fi password";   // Wi-Fi Password
+WiFiServer server(80);
+int temp = 0;
 
-WiFiServer server(80);  // Create a server on port 80
+void setup(){
+  pinMode(led_red, OUTPUT);
+  pinMode(led_green, OUTPUT);
+  pinMode(led_blue, OUTPUT);
 
-int temperature = 0;  // Declare 'temperature' as a global variable
+  Serial.begin(9600);
 
-void setup() {
-  pinMode(LED_RED, OUTPUT);
-  pinMode(LED_GREEN, OUTPUT);
-  pinMode(LED_BLUE, OUTPUT);
-
-  Serial.begin(115200);
-
-  // Connect to Wi-Fi network
-  Serial.print("Connecting to Wi-Fi");
   WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
-  }
-
-  Serial.println("\nWi-Fi connected.");
-  Serial.print("IP address: ");
+  Serial.println("Wifi connected");
+  Serial.print("IP address");
   Serial.println(WiFi.localIP());
 
-  server.begin();  // Start the server
+  server.begin();
 }
 
-void loop() {
+void loop(){
+  String request = "";
   WiFiClient client = server.available();
-  if (client) {
+  if(client){
     String request = "";
-
-    // Wait for data to become available
-    while (client.connected() && client.available() == 0) {
-      delay(1); // Allow data to arrive
-    }
-
-    // Read the full request
-    while (client.available()) {
-      char c = client.read();
-      request += c;
-    }
-
-    // Parse the temperature from the request
-    int tempIndex = request.indexOf("TEMP:");
-    if (tempIndex != -1) {
-      String tempStr = request.substring(tempIndex + 5);
-      tempStr = tempStr.substring(0, tempStr.indexOf('\n'));
-      temperature = tempStr.toInt();  // Convert to integer
-
-      // Print only the temperature to the Serial Monitor
-      Serial.print("Temperature: ");
-      Serial.println(temperature);
-
-      // Control the RGB LED
-      if (temperature > 20) {
-        analogWrite(LED_RED, 0);
-        analogWrite(LED_GREEN, 255);
-        analogWrite(LED_BLUE, 255);
-      } else if (temperature <= 20 && temperature >= 10) {
-        analogWrite(LED_RED, 255);
-        analogWrite(LED_GREEN, 0);
-        analogWrite(LED_BLUE, 255);
-      } else {
-        analogWrite(LED_RED, 255);
-        analogWrite(LED_GREEN, 255);
-        analogWrite(LED_BLUE, 0);
-      }
-
-      // Send HTTP response
-      client.println("HTTP/1.1 200 OK");
-      client.println("Content-Type: text/plain");
-      client.println("Connection: close");
-      client.println();
-      client.println("Temperature received.");
-    } else {
-      // Handle invalid request
-      client.println("HTTP/1.1 400 Bad Request");
-      client.println("Content-Type: text/plain");
-      client.println("Connection: close");
-      client.println();
-      client.println("Invalid request.");
-    }
-
-    client.flush();
-    client.stop();
   }
+
+  while (client.connected() && client.available() == 0){
+    delay(1);
+  }
+
+  while (client.available()){
+    char c = client.read();
+    request += c;
+  }
+  
+  int tempInfo = request.indexOf("TEMP:");
+  if (tempInfo != -1) {
+    String temperatureStr = request.substring(tempInfo + 5);
+    temperatureStr = temperatureStr.substring(0, temperatureStr.indexOf('\n'));
+    temp = temperatureStr.toInt();
+
+    Serial.print("Temperature= ");
+    Serial.println(temp);
+
+    if (temp > 12){
+      analogWrite(led_red, 0);
+      analogWrite(led_green, 255);
+      analogWrite(led_blue, 255);
+    }
+    if(temp <= 12 && temp >=9){
+      analogWrite(led_red, 255);
+      analogWrite(led_green, 0);
+      analogWrite(led_blue, 255);
+    }
+    if (temp <= 8){
+      analogWrite(led_red, 255);
+      analogWrite(led_green, 255);
+      analogWrite(led_blue, 0);
+    }
+
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/plain");
+    client.println();
+    client.println("Data received");
+  }else{
+    client.println("HTTP/1.1 400 bad request");
+    client.println("Content-Type: text/plain");
+    client.println();
+    client.println("Invalid");
+  }
+  client.flush();
+  client.stop();
 }
+
